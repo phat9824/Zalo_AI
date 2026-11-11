@@ -1,0 +1,48 @@
+# Evaluation
+
+## 1. Per-question Scoring
+
+Each answer is scored **correct**, **wrong**, or **abstain**.
+
+An answer of type `abstain` (or a missing answer) is an abstain.
+
+Any other answer is correct only if its **type equals the reference type** and its **value matches the reference** as follows; otherwise it is wrong. **No partial credit.**
+
+### Answer Types and Matching Rules
+
+| Type | Answer Content | Example | Matching Rule |
+|---|---|---|---|
+| `number` | A numeric value (VND amounts, counts, quantities) | `48250000` | Exact match. Reference values are integers (VND amounts, counts, quantities) or rounded to 2 decimals. |
+| `percent` | A percentage value, in percent | `-12.45` | Exact match after rounding to 2 decimal places; the sign must be correct. |
+| `string` | A name (product, customer, branch, weekday, ...) | `"Sting dâu 330ml"` | Both the answer and each accepted form of the reference are normalized, then compared for exact equality. Normalization: (1) Unicode NFC; (2) lowercase; (3) every character that is not a letter, a digit or whitespace is replaced by a space; (4) leading/trailing whitespace removed and runs of whitespace collapsed to one space. **Diacritics are not removed.** Each reference lists its accepted forms: every spelling of the name that occurs in that business's data, plus its code — after normalization, e.g. `sting dâu 330ml`, `sp0842`. |
+| `date` | A date in ISO format | `"2026-08-15"`, `"2025-09"` | Exact match. `yyyy-mm-dd`; questions about a month: `yyyy-mm` (e.g. `2025-09`). |
+| `boolean` | `true` / `false` | `true` | Exact match. |
+| `list` | An ordered list of names or numbers, in the order the question asks for (or the rulebook default) | `["Cà phê sữa", "Bạc xỉu", "Trà đào"]` | Always ordered, and matched by position. The order is the one the question asks for, or the rulebook default when the question gives none (see [Ranking Questions](#2-ranking-questions)). Elements are matched with the `string` or `number` rule. |
+| `table` | A small table: column names and rows | `{"columns": [...], "rows": [[...], ...]}` | Columns are matched by normalized name; if the names do not match, by position. Rows are matched **as a set**; name cells with the `string` rule, numeric cells with the `number` rule. |
+| `unanswerable` | The data does not contain what is needed to answer | — | Correct if and only if the reference is `unanswerable`. |
+| `abstain` | The agent chooses not to answer | — | Scored as abstain regardless of the reference. |
+
+## 2. Ranking Questions
+
+Rankings use the criterion stated in the question, or the rulebook default when the question gives none, in **descending order of that criterion over valid orders only**; elements with equal values are ordered by code, ascending.
+
+Questions whose reference ranking has a tie at the *k* boundary (or at rank 1 for "... nhất" questions) are excluded from the test sets.
+
+When fewer than *k* candidates exist, the reference answer is all of them.
+
+## 3. Score
+
+The leaderboard metric is **Penalized Accuracy (PA)** over the *N* questions of a test set:
+
+$$PA = \frac{1}{N}\sum_{i=1}^{N} s_i, \qquad
+s_i = \begin{cases}
+\;\;\,1 & \text{answer } i \text{ is correct} \
+\;\;\,0 & \text{answer } i \text{ is abstain} \
+-1 & \text{answer } i \text{ is wrong}
+\end{cases}$$
+
+- Any answer given to an **unanswerable** question counts as **wrong**.
+- All questions carry **equal weight**.
+- Ties in the final ranking are broken by **total inference time** in the organizers' re-run, then by **earlier submission**.
+
+> **Practical consequence:** a wrong answer costs the same as two abstains. Answer only when the evidence supports it; otherwise `abstain`, and use `unanswerable` only when the data genuinely cannot support the question (see [rule.md](rule.md) and [data.md](data.md)).
